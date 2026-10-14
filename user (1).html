@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DuoLink</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,sans-serif; }
+  html, body { height:100%; }
+  body {
+    background:#f0f2f5;
+    background-size:cover; background-position:center; background-attachment:fixed;
+    color:#111b21; display:flex; flex-direction:column; min-height:100vh; font-size:15px;
+  }
+  .page-body { flex:1; max-width:1200px; width:100%; margin:0 auto; padding:1rem 1.25rem 2rem; }
+  .overlay-bg { background:rgba(240,242,245,0.92); border-radius:16px; padding:1rem; }
+
+  /* Header */
+  header.site-header {
+    display:flex; justify-content:space-between; align-items:center; gap:1rem;
+    background:#fff; padding:0.85rem 1.25rem; border-radius:12px;
+    box-shadow:0 1px 6px rgba(11,20,26,0.08); margin-bottom:1.25rem;
+  }
+  .logo-area { display:flex; align-items:center; gap:12px; min-width:0; }
+  .logo-area img {
+    width:52px; height:52px; border-radius:12px; object-fit:cover;
+    background:#e9edef; flex-shrink:0;
+  }
+  .logo-area span {
+    font-size:1.35rem; font-weight:800; color:#b12e6b;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .header-actions { display:flex; align-items:center; gap:10px; }
+  .notif-btn {
+    position:relative; background:#f0f2f5; border:none;
+    width:42px; height:42px; border-radius:50%;
+    cursor:pointer; color:#111b21; font-size:1rem;
+  }
+  .notif-btn:hover { background:#e9edef; }
+  .notif-btn .dot {
+    position:absolute; top:6px; right:6px; width:10px; height:10px;
+    border-radius:50%; background:#ea4335; display:none; border:2px solid #fff;
+  }
+  .notif-btn.has-unread .dot { display:block; }
+  .user-badge {
+    display:flex; align-items:center; gap:8px;
+    background:#f0f2f5; padding:5px 10px 5px 5px;
+    border-radius:999px; font-size:0.9rem; max-width:240px;
+  }
+  .user-badge img { width:34px; height:34px; border-radius:50%; object-fit:cover; background:#cfd9e8; }
+  .user-badge .name { font-weight:700; color:#111b21; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .user-badge button {
+    background:none; border:none; color:#b12e6b; cursor:pointer;
+    font-weight:700; font-size:0.8rem; padding:0 4px;
+  }
+
+  /* Chips */
+  .status-strip { display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:1.25rem; }
+  .status-chip {
+    display:inline-flex; align-items:center; gap:8px;
+    background:#fff; padding:8px 15px; border-radius:999px;
+    font-size:0.85rem; font-weight:700; color:#111b21;
+    box-shadow:0 1px 4px rgba(11,20,26,0.06);
+  }
+  .status-chip.unlocked { color:#0b7a3d; background:#e7f8ee; }
+  .status-chip.locked   { color:#8a5c00; background:#fff5e0; }
+  .status-chip.free     { color:#075a80; background:#e7f4fb; }
+
+  /* Auth */
+  .auth-screen { display:flex; justify-content:center; align-items:center; padding:2rem 0; }
+  .auth-card {
+    background:#fff; padding:2rem 1.75rem; border-radius:16px;
+    width:100%; max-width:470px; box-shadow:0 4px 20px rgba(11,20,26,0.08);
+  }
+  .auth-card h2 { margin-bottom:0.4rem; font-size:1.5rem; color:#111b21; }
+  .auth-card p.subtitle { color:#667781; font-size:0.9rem; margin-bottom:1rem; }
+  .auth-card input, .auth-card select {
+    width:100%; padding:13px 14px; margin-bottom:12px;
+    border:1px solid #d1d7db; border-radius:10px; font-size:0.95rem;
+    background:#f7f8fa; color:#111b21;
+  }
+  .auth-card input::placeholder { color:#8696a0; }
+  .auth-card input:focus, .auth-card select:focus {
+    outline:none; border-color:#b12e6b; background:#fff;
+    box-shadow:0 0 0 3px rgba(177,46,107,0.1);
+  }
+  .auth-card label.small-label {
+    font-size:0.83rem; color:#667781; display:block;
+    margin-bottom:6px; font-weight:600;
+  }
+  .auth-card button.primary {
+    width:100%; padding:13px; background:#b12e6b; color:#fff;
+    border:none; border-radius:10px; font-size:1rem; font-weight:700;
+    cursor:pointer; transition:0.2s;
+  }
+  .auth-card button.primary:hover { background:#8f2356; }
+  .auth-card button.primary:disabled { background:#b3bfd0; cursor:not-allowed; }
+  .auth-toggle { text-align:center; margin-top:1rem; font-size:0.9rem; color:#667781; }
+  .auth-toggle a { color:#b12e6b; text-decoration:none; font-weight:700; margin-left:4px; }
+  .error { color:#c4271c; font-size:0.88rem; margin-top:8px; min-height:1.2em; font-weight:600; }
+  .hidden { display:none !important; }
+
+  /* Location bar */
+  .location-bar {
+    background:#fff; padding:1rem 1.25rem; border-radius:12px;
+    display:flex; flex-wrap:wrap; gap:1rem; align-items:center;
+    box-shadow:0 1px 6px rgba(11,20,26,0.06); margin-bottom:1.5rem;
+  }
+  .location-bar label { font-weight:700; color:#111b21; font-size:0.92rem; }
+  .location-bar select {
+    padding:11px 14px; border-radius:10px; border:1px solid #d1d7db;
+    background:#f7f8fa; font-size:0.92rem; min-width:190px; color:#111b21;
+  }
+  .btn-explore {
+    background:#b12e6b; color:#fff; border:none;
+    padding:11px 22px; border-radius:10px;
+    font-weight:700; cursor:pointer; transition:0.2s; font-size:0.92rem;
+  }
+  .btn-explore:hover { background:#8f2356; }
+  .hint { font-size:0.85rem; color:#667781; font-weight:500; }
+
+  /* Cards */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1.25rem; }
+  .card {
+    background:#fff; border-radius:16px; padding:1.5rem 1rem 1.25rem;
+    text-align:center; box-shadow:0 1px 6px rgba(11,20,26,0.06);
+    transition:0.2s; display:flex; flex-direction:column; align-items:center;
+    border:1px solid #f0f2f5;
+  }
+  .card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(11,20,26,0.1); }
+  .card img.avatar {
+    width:118px; height:118px; border-radius:50%; object-fit:cover;
+    border:4px solid #fff; box-shadow:0 4px 14px rgba(177,46,107,0.2);
+    margin-bottom:12px; background:#e9edef;
+  }
+  .card h3 { font-size:1.15rem; margin-bottom:4px; color:#111b21; font-weight:700; }
+  .card .meta { font-size:0.88rem; color:#667781; margin-bottom:14px; font-weight:500; }
+  .card .dm-btn {
+    background:#f0f2f5; border:none; padding:10px 22px;
+    border-radius:999px; font-weight:700; font-size:0.87rem;
+    cursor:pointer; color:#111b21; display:inline-flex; align-items:center; gap:6px;
+  }
+  .card .dm-btn:hover { background:#e9edef; }
+  .card .dm-btn.paid { background:#b12e6b; color:#fff; }
+  .card .dm-btn.paid:hover { background:#8f2356; }
+
+  .paywall {
+    grid-column:1/-1; background:#fff; padding:3rem 1.5rem;
+    border-radius:16px; text-align:center;
+    box-shadow:0 1px 6px rgba(11,20,26,0.06);
+  }
+  .paywall i { font-size:2.4rem; color:#b12e6b; }
+  .paywall h3 { margin:1rem 0 8px; font-size:1.3rem; color:#111b21; }
+  .paywall p { color:#667781; margin-bottom:1.4rem; font-size:0.95rem; }
+
+  footer.site-footer {
+    background:#111b21; color:#cbd5e1; padding:1.25rem 1.5rem; margin-top:auto;
+  }
+  .footer-inner {
+    max-width:1200px; margin:0 auto; display:flex; flex-wrap:wrap;
+    gap:1rem; justify-content:space-between; align-items:center; font-size:0.9rem;
+  }
+  footer .support { display:flex; align-items:center; gap:8px; }
+  footer .support i { color:#b12e6b; }
+
+  /* Modals */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(11,20,26,0.55);
+    display:none; align-items:center; justify-content:center;
+    z-index:1000; padding:1rem; backdrop-filter:blur(3px);
+  }
+  .modal-overlay.active { display:flex; }
+  .modal {
+    background:#fff; border-radius:16px; padding:1.75rem;
+    max-width:440px; width:100%; text-align:center;
+    box-shadow:0 20px 60px rgba(11,20,26,0.3);
+  }
+  .modal h3 { margin-bottom:8px; font-size:1.2rem; color:#111b21; }
+  .modal p.sub { color:#667781; font-size:0.92rem; line-height:1.4; }
+  .modal .price { font-size:2rem; color:#b12e6b; font-weight:800; margin:14px 0; }
+  .modal .pay-btn {
+    width:100%; background:#00b8d4; color:#fff; border:none;
+    padding:14px; border-radius:10px; font-weight:700; cursor:pointer;
+    margin-top:8px; transition:0.2s; font-size:0.97rem;
+  }
+  .modal .pay-btn:hover { background:#0097b2; }
+  .modal .pay-btn:disabled { background:#b3bfd0; cursor:not-allowed; }
+  .modal .close-btn {
+    background:none; border:none; margin-top:12px;
+    color:#667781; cursor:pointer; font-size:0.9rem; font-weight:600;
+  }
+
+  /* Notifications drawer */
+  .notif-drawer {
+    position:fixed; top:0; right:-420px; width:400px; max-width:100vw;
+    height:100vh; background:#fff; box-shadow:-10px 0 30px rgba(11,20,26,0.15);
+    z-index:1100; transition:right 0.3s ease; display:flex; flex-direction:column;
+  }
+  .notif-drawer.open { right:0; }
+  .notif-header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:1.25rem 1.5rem; border-bottom:1px solid #f0f2f5;
+  }
+  .notif-header h3 { font-size:1.05rem; color:#111b21; }
+  .notif-header button { background:none; border:none; font-size:1.2rem; cursor:pointer; color:#667781; }
+  .notif-list { flex:1; overflow-y:auto; padding:0.5rem 0; }
+  .notif-item {
+    padding:14px 1.5rem; border-bottom:1px solid #f7f8fa;
+    display:flex; gap:12px; cursor:pointer; transition:background 0.15s;
+  }
+  .notif-item:hover { background:#f7f8fa; }
+  .notif-item.unread { background:#fff5f9; }
+  .notif-item .n-icon {
+    width:40px; height:40px; border-radius:50%; background:#fde8f1;
+    color:#b12e6b; display:flex; align-items:center; justify-content:center;
+    font-size:1rem; flex-shrink:0;
+  }
+  .notif-item .n-body { flex:1; min-width:0; }
+  .notif-item .n-title { font-weight:700; color:#111b21; font-size:0.92rem; }
+  .notif-item .n-msg { color:#667781; font-size:0.85rem; margin-top:2px; line-height:1.35; }
+  .notif-item .n-time { color:#8696a0; font-size:0.75rem; margin-top:4px; }
+  .notif-empty { padding:3rem 1.5rem; text-align:center; color:#8696a0; font-size:0.9rem; }
+
+  /* WhatsApp-style chat */
+  .chat-modal { max-width:560px; text-align:left; padding:0; overflow:hidden; }
+  .chat-header {
+    background:#b12e6b; color:#fff; padding:14px 18px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .chat-header img {
+    width:40px; height:40px; border-radius:50%; object-fit:cover; background:#8f2356;
+  }
+  .chat-header .info { flex:1; min-width:0; }
+  .chat-header .info h4 { font-size:1rem; font-weight:700; }
+  .chat-header .info span { font-size:0.78rem; opacity:0.85; }
+  .chat-header button {
+    background:none; border:none; color:#fff; font-size:1.1rem; cursor:pointer;
+  }
+  .chat-messages {
+    background:#efeae2; height:400px; overflow-y:auto;
+    padding:16px 12px; display:flex; flex-direction:column; gap:6px;
+    background-image:radial-gradient(#00000008 1px, transparent 1px);
+    background-size:20px 20px;
+  }
+  .chat-bubble {
+    max-width:78%; padding:8px 12px 6px; border-radius:8px;
+    font-size:0.92rem; line-height:1.35; word-wrap:break-word;
+    position:relative; box-shadow:0 1px 1px rgba(11,20,26,0.13);
+  }
+  .chat-bubble.mine { background:#d9fdd3; color:#111b21; align-self:flex-end; border-top-right-radius:2px; }
+  .chat-bubble.theirs { background:#fff; color:#111b21; align-self:flex-start; border-top-left-radius:2px; }
+  .chat-bubble .time {
+    font-size:0.68rem; color:#667781; display:block;
+    text-align:right; margin-top:2px;
+  }
+  .chat-bubble.mine .time::after { content:" ✓✓"; color:#53bdeb; }
+  .chat-bubble img { max-width:220px; border-radius:6px; display:block; margin-bottom:4px; }
+  .chat-input-row {
+    background:#f0f2f5; padding:10px 12px;
+    display:flex; gap:8px; align-items:center;
+  }
+  .chat-input-row input[type=text] {
+    flex:1; padding:11px 14px; border:1px solid transparent;
+    border-radius:999px; font-size:0.92rem; background:#fff; color:#111b21;
+  }
+  .chat-input-row input[type=text]::placeholder { color:#8696a0; }
+  .chat-input-row input[type=text]:focus { outline:none; }
+  .chat-input-row button {
+    background:#b12e6b; color:#fff; border:none;
+    width:42px; height:42px; border-radius:50%; cursor:pointer;
+  }
+  .chat-input-row button.image-btn { background:#fff; color:#667781; }
+  .chat-input-row button:hover { opacity:0.88; }
+
+  /* Toast */
+  .toast-container {
+    position:fixed; top:1rem; right:1rem; z-index:2000;
+    display:flex; flex-direction:column; gap:10px; pointer-events:none;
+  }
+  .toast {
+    background:#fff; padding:13px 16px; border-radius:12px;
+    box-shadow:0 10px 30px rgba(11,20,26,0.18);
+    display:flex; align-items:flex-start; gap:11px;
+    min-width:280px; max-width:400px;
+    border-left:4px solid #111b21; pointer-events:auto;
+    animation:slideIn 0.22s ease-out; font-size:0.9rem;
+  }
+  .toast.success { border-left-color:#0b7a3d; }
+  .toast.error   { border-left-color:#ea4335; }
+  .toast.warning { border-left-color:#d9910b; }
+  .toast.info    { border-left-color:#00b8d4; }
+  .toast i { font-size:1.15rem; margin-top:1px; }
+  .toast.success i { color:#0b7a3d; }
+  .toast.error   i { color:#ea4335; }
+  .toast.warning i { color:#d9910b; }
+  .toast.info i    { color:#00b8d4; }
+  .toast .content { flex:1; }
+  .toast .title { font-weight:700; color:#111b21; margin-bottom:2px; }
+  .toast .msg { color:#667781; font-size:0.85rem; line-height:1.3; }
+  @keyframes slideIn {
+    from { transform:translateX(120%); opacity:0; }
+    to { transform:translateX(0); opacity:1; }
+  }
+
+  /* System notification prompt */
+  .sysnotif-prompt {
+    position:fixed; bottom:1rem; left:1rem; z-index:1900;
+    background:#111b21; color:#fff; padding:12px 16px;
+    border-radius:10px; display:none; align-items:center; gap:12px;
+    font-size:0.85rem; max-width:340px;
+    box-shadow:0 10px 30px rgba(11,20,26,0.3);
+  }
+  .sysnotif-prompt.show { display:flex; }
+  .sysnotif-prompt button {
+    background:#b12e6b; color:#fff; border:none;
+    padding:7px 14px; border-radius:8px; font-weight:700;
+    cursor:pointer; font-size:0.8rem;
+  }
+  .sysnotif-prompt button.dismiss { background:transparent; color:#8696a0; padding:4px 8px; }
+
+  @media (max-width:520px) {
+    .logo-area img { width:46px; height:46px; }
+    .logo-area span { font-size:1.15rem; }
+    .user-badge .name { max-width:70px; }
+    .card img.avatar { width:100px; height:100px; }
+    .notif-drawer { width:100%; right:-100%; }
+  }
+</style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<aside class="notif-drawer" id="notifDrawer">
+  <div class="notif-header">
+    <h3><i class="fas fa-bell"></i> Notifications</h3>
+    <button id="closeNotifDrawer"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="notif-list" id="notifList">
+    <div class="notif-empty">You have no notifications yet.</div>
+  </div>
+</aside>
+
+<div class="sysnotif-prompt" id="sysNotifPrompt">
+  <i class="fas fa-bell" style="color:#b12e6b;"></i>
+  <span style="flex:1;">Enable desktop alerts to receive messages even when this tab is in the background.</span>
+  <button id="enableSysNotifBtn">Enable</button>
+  <button class="dismiss" id="dismissSysNotifBtn"><i class="fas fa-times"></i></button>
+</div>
+
+<div class="page-body">
+  <div class="overlay-bg">
+    <header class="site-header">
+      <div class="logo-area">
+        <img id="siteLogo" src="" alt="logo" />
+        <span id="siteName">DuoLink</span>
+      </div>
+      <div class="header-actions">
+        <button class="notif-btn" id="notifBtn" title="Notifications">
+          <i class="fas fa-bell"></i>
+          <span class="dot"></span>
+        </button>
+        <div class="user-badge">
+          <img id="badgeAvatar" src="" alt="" style="display:none;" />
+          <span class="name" id="currentUserName">Guest</span>
+          <button id="logoutBtn" class="hidden">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="authScreen" class="auth-screen">
+      <div class="auth-card">
+        <h2 id="authTitle">Sign In</h2>
+        <p class="subtitle" id="authSubtitle">Welcome back. Please sign in to continue.</p>
+        <input type="email" id="authEmail" placeholder="Email address" autocomplete="email" />
+        <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
+        <div id="signupFields" class="hidden">
+          <input type="text" id="authNickname" placeholder="Nickname" />
+          <input type="number" id="authAge" placeholder="Age" min="18" />
+          <select id="authGender">
+            <option value="">Select gender</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="other">Other</option>
+          </select>
+          <select id="authCounty"><option value="">Select county</option></select>
+          <label class="small-label">Country: Kenya</label>
+          <label class="small-label">Profile picture (max 500KB)</label>
+          <input type="file" id="authPhoto" accept="image/*" />
+        </div>
+        <button id="authSubmitBtn" class="primary">Sign In</button>
+        <p class="auth-toggle">
+          <span id="authToggleText">Don't have an account?</span>
+          <a href="#" id="authToggleLink">Sign Up</a>
+        </p>
+        <p id="authError" class="error"></p>
+      </div>
+    </section>
+
+    <main id="mainPlatform" class="hidden">
+      <div id="statusStrip" class="status-strip"></div>
+      <div class="location-bar">
+        <label><i class="fas fa-map-marker-alt"></i> County:</label>
+        <select id="countySelect"></select>
+        <button class="btn-explore" id="exploreBtn"><i class="fas fa-search"></i> Explore</button>
+        <span class="hint" id="exploreHint">Free within your county. Paid to explore other counties.</span>
+      </div>
+      <div class="grid" id="profilesGrid"></div>
+    </main>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="support"><i class="fas fa-headset"></i> <span id="footerSupport">Support: help@duolink.com</span></div>
+    <div id="footerText">DuoLink</div>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <h3><i class="fas fa-lock"></i> Payment Required</h3>
+    <p class="sub" id="paymentMessage">Complete the one-time payment to continue.</p>
+    <div class="price" id="paymentAmount">KES 0</div>
+    <button class="pay-btn" id="paystackBtn">
+      <i class="fas fa-credit-card"></i> Pay securely with Paystack
+    </button>
+    <button class="close-btn" id="closePaymentBtn">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="chatModal">
+  <div class="modal chat-modal">
+    <div class="chat-header">
+      <img id="chatAvatar" src="" alt="" />
+      <div class="info">
+        <h4 id="chatHeader">Chat</h4>
+        <span id="chatStatus">online</span>
+      </div>
+      <button id="closeChatBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input type="file" id="chatImageInput" accept="image/*" hidden />
+      <button class="image-btn" id="chatImageBtn" title="Send image">
+        <i class="fas fa-image"></i>
+      </button>
+      <input type="text" id="chatTextInput" placeholder="Type a message" />
+      <button id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, query,
+  where, getDocs, addDoc, orderBy, onSnapshot, serverTimestamp, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB0XcgoJ1j7KHJoNKrpwJgy8vzvg0PEk-w",
+  authDomain: "dating-site-85a67.firebaseapp.com",
+  projectId: "dating-site-85a67",
+  storageBucket: "dating-site-85a67.firebasestorage.app",
+  messagingSenderId: "373128084352",
+  appId: "1:373128084352:web:06b4e6b5e706b42f759f65",
+  measurementId: "G-V0TJ3VWFKM"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const KENYA_COUNTIES = ["Baringo","Bomet","Bungoma","Busia","Elgeyo-Marakwet","Embu","Garissa","Homa Bay","Isiolo","Kajiado","Kakamega","Kericho","Kiambu","Kilifi","Kirinyaga","Kisii","Kisumu","Kitui","Kwale","Laikipia","Lamu","Machakos","Makueni","Mandera","Marsabit","Meru","Migori","Mombasa","Murang'a","Nairobi","Nakuru","Nandi","Narok","Nyamira","Nyandarua","Nyeri","Samburu","Siaya","Taita-Taveta","Tana River","Tharaka-Nithi","Trans Nzoia","Turkana","Uasin Gishu","Vihiga","Wajir","West Pokot"];
+
+const $ = id => document.getElementById(id);
+const authScreen=$("authScreen"),mainPlatform=$("mainPlatform"),authTitle=$("authTitle"),authSubtitle=$("authSubtitle");
+const authEmail=$("authEmail"),authPassword=$("authPassword"),signupFields=$("signupFields"),authNickname=$("authNickname");
+const authAge=$("authAge"),authGender=$("authGender"),authCounty=$("authCounty"),authPhoto=$("authPhoto");
+const authSubmitBtn=$("authSubmitBtn"),authToggleLink=$("authToggleLink"),authToggleText=$("authToggleText"),authError=$("authError");
+const currentUserName=$("currentUserName"),badgeAvatar=$("badgeAvatar"),logoutBtn=$("logoutBtn");
+const siteNameEl=$("siteName"),siteLogoEl=$("siteLogo"),countySelect=$("countySelect"),exploreBtn=$("exploreBtn");
+const exploreHint=$("exploreHint"),profilesGrid=$("profilesGrid"),statusStrip=$("statusStrip"),footerSupport=$("footerSupport"),footerText=$("footerText");
+const paymentModal=$("paymentModal"),paymentMessage=$("paymentMessage"),paymentAmount=$("paymentAmount");
+const paystackBtn=$("paystackBtn"),closePaymentBtn=$("closePaymentBtn");
+const chatModal=$("chatModal"),chatHeader=$("chatHeader"),chatMessages=$("chatMessages"),chatTextInput=$("chatTextInput");
+const chatSendBtn=$("chatSendBtn"),chatImageBtn=$("chatImageBtn"),chatImageInput=$("chatImageInput"),closeChatBtn=$("closeChatBtn");
+const chatAvatar=$("chatAvatar"),chatStatus=$("chatStatus");
+const toastContainer=$("toastContainer"),notifBtn=$("notifBtn"),notifDrawer=$("notifDrawer");
+const closeNotifDrawer=$("closeNotifDrawer"),notifList=$("notifList");
+const sysNotifPrompt=$("sysNotifPrompt"),enableSysNotifBtn=$("enableSysNotifBtn"),dismissSysNotifBtn=$("dismissSysNotifBtn");
+
+let currentUser=null,userProfile=null;
+let siteConfig={name:"DuoLink",logo:"",background:"",country:"Kenya",supportEmail:"help@duolink.com",footerText:"DuoLink",dmFee:200,exploreFee:500,paymentsEnabled:true,paystackPublicKey:""};
+let isSignup=false,selectedCounty="",activeChatUnsub=null,activeChatId=null,activeChatOtherUid=null;
+let paymentActionType=null,paymentTargetUser=null,userPaymentsUnsub=null,notifUnsub=null;
+let knownChatSnapshot={},soundEnabled=true,currentNotifs=[];
+let sysNotifPermission = (typeof Notification !== "undefined") ? Notification.permission : "denied";
+
+/* ---------- AUDIO ---------- */
+let audioCtx=null;
+function ensureAudioCtx(){ if(!audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioCtx=null; } } return audioCtx; }
+function playChime(kind="message"){
+  if(!soundEnabled) return;
+  const ctx=ensureAudioCtx(); if(!ctx) return;
+  if(ctx.state==="suspended") ctx.resume();
+  const now=ctx.currentTime;
+  let notes,duration=0.22,volume=0.13;
+  if(kind==="dm"){ notes=[784,1046]; duration=0.26; volume=0.16; }
+  else if(kind==="notification"){ notes=[660,880,1320]; }
+  else { notes=[880,1180]; }
+  notes.forEach((freq,i)=>{
+    const osc=ctx.createOscillator(),gain=ctx.createGain();
+    osc.type="sine"; osc.frequency.value=freq;
+    const start=now+i*0.12;
+    gain.gain.setValueAtTime(0.0001,start);
+    gain.gain.exponentialRampToValueAtTime(volume,start+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start); osc.stop(start+duration+0.03);
+  });
+}
+document.addEventListener("click",()=>{ const ctx=ensureAudioCtx(); if(ctx&&ctx.state==="suspended") ctx.resume(); },{once:true});
+
+/* ---------- SYSTEM NOTIFICATIONS ---------- */
+function updateSysNotifPrompt(){
+  if(typeof Notification==="undefined"){ sysNotifPrompt.classList.remove("show"); return; }
+  if(Notification.permission==="default"){ sysNotifPrompt.classList.add("show"); }
+  else { sysNotifPrompt.classList.remove("show"); }
+}
+enableSysNotifBtn.addEventListener("click",async()=>{
+  if(typeof Notification==="undefined") return;
+  const perm=await Notification.requestPermission();
+  sysNotifPermission=perm;
+  updateSysNotifPrompt();
+  if(perm==="granted") toast("success","Desktop alerts enabled","You will now receive alerts even when this tab is in the background.");
+});
+dismissSysNotifBtn.addEventListener("click",()=>sysNotifPrompt.classList.remove("show"));
+
+function showSystemNotification(title,body,icon){
+  if(typeof Notification==="undefined") return;
+  if(Notification.permission!=="granted") return;
+  if(document.visibilityState==="visible" && document.hasFocus()) return; // only when hidden
+  try{
+    const n=new Notification(title,{ body, icon: icon || (siteConfig.logo||undefined), badge: siteConfig.logo||undefined, silent:true });
+    n.onclick=()=>{ window.focus(); n.close(); };
+  }catch(e){ /* ignore */ }
+}
+
+/* ---------- TOAST (auto-dismiss < 5s) ---------- */
+function toast(type,title,message,duration=4200){
+  if(duration>4900) duration=4900;
+  const el=document.createElement("div");
+  el.className=`toast ${type}`;
+  const iconMap={success:"fa-check-circle",error:"fa-exclamation-circle",warning:"fa-exclamation-triangle",info:"fa-info-circle"};
+  el.innerHTML=`<i class="fas ${iconMap[type]||iconMap.info}"></i>
+    <div class="content"><div class="title">${escapeHtml(title)}</div><div class="msg">${escapeHtml(message)}</div></div>`;
+  toastContainer.appendChild(el);
+  setTimeout(()=>{
+    el.style.opacity="0"; el.style.transform="translateX(120%)"; el.style.transition="0.3s";
+    setTimeout(()=>el.remove(),300);
+  },duration);
+}
+function escapeHtml(str){ return String(str==null?"":str).replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s])); }
+
+/* ---------- NOTIFICATIONS ---------- */
+function renderNotifications(items){
+  currentNotifs=items;
+  if(!items.length){ notifList.innerHTML='<div class="notif-empty">You have no notifications yet.</div>'; updateUnreadDot(items); return; }
+  const iconMap={payment:"fa-credit-card",access:"fa-unlock",message:"fa-comment",system:"fa-info-circle",warning:"fa-exclamation-triangle",broadcast:"fa-bullhorn"};
+  notifList.innerHTML=items.map(n=>{
+    const time=n.createdAt?.toDate?formatRelative(n.createdAt.toDate()):"just now";
+    return `<div class="notif-item ${n.read?"":"unread"}" data-id="${n.id}">
+      <div class="n-icon"><i class="fas ${iconMap[n.category]||"fa-bell"}"></i></div>
+      <div class="n-body">
+        <div class="n-title">${escapeHtml(n.title||"Notification")}</div>
+        <div class="n-msg">${escapeHtml(n.body||"")}</div>
+        <div class="n-time">${time}</div>
+      </div></div>`;
+  }).join("");
+  notifList.querySelectorAll(".notif-item").forEach(el=>{
+    el.addEventListener("click",async()=>{
+      const id=el.dataset.id;
+      const notif=currentNotifs.find(n=>n.id===id);
+      try{ await updateDoc(doc(db,"notifications",id),{read:true}); }catch(e){}
+      if(notif && notif.category==="message" && notif.chatId && notif.fromUserId){
+        let nickname="User";
+        try{ const s=await getDoc(doc(db,"users",notif.fromUserId)); if(s.exists()) nickname=s.data().nickname||"User"; }catch(e){}
+        notifDrawer.classList.remove("open");
+        openChat(notif.fromUserId,nickname);
+      }
+    });
+  });
+  updateUnreadDot(items);
+}
+function updateUnreadDot(items){ notifBtn.classList.toggle("has-unread",items.some(n=>!n.read)); }
+function formatRelative(date){
+  const diff=(Date.now()-date.getTime())/1000;
+  if(diff<60) return "just now";
+  if(diff<3600) return `${Math.floor(diff/60)} min ago`;
+  if(diff<86400) return `${Math.floor(diff/3600)} hr ago`;
+  return date.toLocaleDateString();
+}
+function watchNotifications(uid){
+  if(notifUnsub) notifUnsub();
+  const q=query(collection(db,"notifications"),where("userId","==",uid),orderBy("createdAt","desc"));
+  let initialised=false;
+  notifUnsub=onSnapshot(q,snap=>{
+    const items=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderNotifications(items);
+    if(initialised){
+      snap.docChanges().forEach(change=>{
+        if(change.type==="added"){
+          const n=change.doc.data();
+          if(n.read) return;
+          if(n.category==="message") playChime("dm");
+          else playChime("notification");
+          if(!notifDrawer.classList.contains("open")){
+            toast("info",n.title||"Notification",n.body||"You have a new notification.");
+          }
+          showSystemNotification(n.title||"Notification", n.body||"", siteConfig.logo);
+        }
+      });
+    }
+    initialised=true;
+  });
+}
+notifBtn.addEventListener("click",()=>notifDrawer.classList.add("open"));
+closeNotifDrawer.addEventListener("click",()=>notifDrawer.classList.remove("open"));
+
+/* ---------- COUNTIES ---------- */
+function fillCounties(){
+  const options=KENYA_COUNTIES.map(c=>`<option value="${c}">${c}</option>`).join("");
+  authCounty.innerHTML=`<option value="">Select county</option>${options}`;
+  countySelect.innerHTML=options;
+}
+fillCounties();
+
+/* ---------- IMAGE COMPRESSION ---------- */
+function compressImage(file,maxW,maxH,quality=0.75){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let {width,height}=img;
+        if(width>maxW||height>maxH){ const ratio=Math.min(maxW/width,maxH/height); width=Math.round(width*ratio); height=Math.round(height*ratio); }
+        const canvas=document.createElement("canvas"); canvas.width=width; canvas.height=height;
+        canvas.getContext("2d").drawImage(img,0,0,width,height);
+        resolve(canvas.toDataURL("image/jpeg",quality));
+      };
+      img.onerror=reject; img.src=e.target.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- SITE CONFIG ---------- */
+function watchSiteConfig(){
+  onSnapshot(doc(db,"config","site"),snap=>{
+    if(snap.exists()){ siteConfig={...siteConfig,...snap.data()}; applySiteConfig(); if(userProfile){renderProfiles();renderStatusStrip();} }
+    else setDoc(doc(db,"config","site"),siteConfig);
+  });
+}
+watchSiteConfig();
+function applySiteConfig(){
+  siteNameEl.textContent=siteConfig.name||"DuoLink";
+  siteLogoEl.src=siteConfig.logo||'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23b12e6b"%3E%3Cpath d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/%3E%3C/svg%3E';
+  footerSupport.textContent=`Support: ${siteConfig.supportEmail}`;
+  footerText.textContent=siteConfig.footerText;
+  document.title=siteConfig.name||"DuoLink";
+  document.body.style.backgroundImage=siteConfig.background?`url('${siteConfig.background}')`:"none";
+}
+
+/* ---------- ACCESS ---------- */
+function hasDMAccess(){ if(!userProfile) return false; if(!siteConfig.paymentsEnabled) return true; return userProfile.paidDM===true; }
+function hasExploreAccess(){ if(!userProfile) return false; if(!siteConfig.paymentsEnabled) return true; return userProfile.paidExplore===true; }
+function renderStatusStrip(){
+  if(!userProfile) return;
+  statusStrip.innerHTML="";
+  if(!siteConfig.paymentsEnabled){
+    statusStrip.innerHTML=`<div class="status-chip free"><i class="fas fa-unlock"></i> Free access enabled by administrator</div>`;
+    return;
+  }
+  statusStrip.innerHTML=`
+    <div class="status-chip ${userProfile.paidDM?'unlocked':'locked'}">
+      <i class="fas ${userProfile.paidDM?'fa-check-circle':'fa-lock'}"></i> DM access: ${userProfile.paidDM?'Unlocked permanently':'Locked'}
+    </div>
+    <div class="status-chip ${userProfile.paidExplore?'unlocked':'locked'}">
+      <i class="fas ${userProfile.paidExplore?'fa-check-circle':'fa-lock'}"></i> Explore access: ${userProfile.paidExplore?'Unlocked permanently':'Locked'}
+    </div>`;
+}
+
+/* ---------- AUTH ---------- */
+authToggleLink.addEventListener("click",e=>{
+  e.preventDefault();
+  isSignup=!isSignup;
+  authTitle.textContent=isSignup?"Create Account":"Sign In";
+  authSubtitle.textContent=isSignup?"Join the community in under a minute.":"Welcome back. Please sign in to continue.";
+  authSubmitBtn.textContent=isSignup?"Create Account":"Sign In";
+  authToggleText.textContent=isSignup?"Already have an account?":"Don't have an account?";
+  authToggleLink.textContent=isSignup?"Sign In":"Sign Up";
+  signupFields.classList.toggle("hidden",!isSignup);
+  authError.textContent="";
+});
+
+authSubmitBtn.addEventListener("click",async()=>{
+  authError.textContent="";
+  const email=authEmail.value.trim(),password=authPassword.value;
+  if(!email||!password){ authError.textContent="Email and password are required."; return; }
+  if(password.length<6){ authError.textContent="Password must be at least 6 characters."; return; }
+  try{
+    if(isSignup){
+      const nickname=authNickname.value.trim(),age=Number(authAge.value),gender=authGender.value,county=authCounty.value,photoFile=authPhoto.files[0];
+      if(!nickname||!age||!gender||!county||!photoFile){ authError.textContent="All fields, including a profile picture, are required."; return; }
+      if(age<18){ authError.textContent="You must be 18 years or older to register."; return; }
+      if(photoFile.size>500*1024){ authError.textContent="Profile picture must be under 500KB."; return; }
+      authSubmitBtn.disabled=true; authSubmitBtn.textContent="Creating account...";
+      const photoData=await compressImage(photoFile,400,400,0.7);
+      const cred=await createUserWithEmailAndPassword(auth,email,password);
+      const uid=cred.user.uid;
+      await setDoc(doc(db,"users",uid),{email,nickname,age,gender,county,country:"Kenya",profilePic:photoData,paidDM:false,paidExplore:false,suspended:false,role:"user",createdAt:serverTimestamp()});
+      await pushNotification(uid,"system","Welcome to "+(siteConfig.name||"DuoLink"),"Your account is ready. Complete a one-time payment to unlock DMs and other counties.");
+      await notifyAdmins("system","New user registered",`${nickname} joined from ${county}.`,{relatedUserId:uid});
+      toast("success","Account created","Welcome to "+(siteConfig.name||"DuoLink")+".");
+      authSubmitBtn.disabled=false; authSubmitBtn.textContent="Create Account";
+    } else {
+      await signInWithEmailAndPassword(auth,email,password);
+    }
+  }catch(err){ authError.textContent=err.message; authSubmitBtn.disabled=false; authSubmitBtn.textContent=isSignup?"Create Account":"Sign In"; }
+});
+
+logoutBtn.addEventListener("click",()=>signOut(auth));
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    currentUser=null; userProfile=null;
+    authScreen.classList.remove("hidden"); mainPlatform.classList.add("hidden");
+    currentUserName.textContent="Guest"; badgeAvatar.style.display="none"; logoutBtn.classList.add("hidden");
+    if(userPaymentsUnsub){ userPaymentsUnsub(); userPaymentsUnsub=null; }
+    if(notifUnsub){ notifUnsub(); notifUnsub=null; }
+    return;
+  }
+  currentUser=user;
+
+  try{
+    const verifiedQ=query(collection(db,"payments"),where("userId","==",user.uid),where("status","==","success"));
+    const verifiedSnap=await getDocs(verifiedQ);
+    const updates={};
+    verifiedSnap.forEach(d=>{ const p=d.data(); if(p.type==="dm") updates.paidDM=true; if(p.type==="explore") updates.paidExplore=true; });
+    const userSnap=await getDoc(doc(db,"users",user.uid));
+    if(userSnap.exists()&&Object.keys(updates).length){
+      const cur=userSnap.data();
+      const needs=Object.keys(updates).some(k=>cur[k]!==true);
+      if(needs) await updateDoc(doc(db,"users",user.uid),updates);
+    }
+  }catch(e){ console.warn("Auto-apply skipped:",e.message); }
+
+  const snap=await getDoc(doc(db,"users",user.uid));
+  if(!snap.exists()){ await signOut(auth); return; }
+  userProfile={id:user.uid,...snap.data()};
+  if(userProfile.suspended){ toast("error","Account suspended","Please contact support for assistance."); await signOut(auth); return; }
+
+  currentUserName.textContent=userProfile.nickname;
+  if(userProfile.profilePic){ badgeAvatar.src=userProfile.profilePic; badgeAvatar.style.display="inline"; }
+  logoutBtn.classList.remove("hidden");
+  authScreen.classList.add("hidden"); mainPlatform.classList.remove("hidden");
+  countySelect.value=userProfile.county; selectedCounty=userProfile.county;
+
+  if(userPaymentsUnsub) userPaymentsUnsub();
+  userPaymentsUnsub=onSnapshot(doc(db,"users",user.uid),s=>{
+    if(!s.exists()) return;
+    const updated=s.data();
+    const wasDM=userProfile.paidDM, wasExp=userProfile.paidExplore;
+    userProfile={id:user.uid,...updated};
+    if(!wasDM&&userProfile.paidDM){ toast("success","DM access unlocked","Your DM access is now active permanently."); playChime("notification"); }
+    if(!wasExp&&userProfile.paidExplore){ toast("success","Explore access unlocked","You can now browse every county."); playChime("notification"); }
+    renderStatusStrip(); renderProfiles();
+  });
+  renderStatusStrip(); renderProfiles();
+  watchNotifications(user.uid);
+  updateSysNotifPrompt();
+});
+
+exploreBtn.addEventListener("click",()=>{ selectedCounty=countySelect.value; renderProfiles(); });
+
+async function renderProfiles(){
+  if(!userProfile) return;
+  exploreHint.textContent=siteConfig.paymentsEnabled?"Free within your county. Paid to explore other counties.":"Payments are disabled. Everything is free.";
+  const exploringOther=selectedCounty!==userProfile.county;
+  if(exploringOther&&!hasExploreAccess()){
+    profilesGrid.innerHTML=`<div class="paywall">
+      <i class="fas fa-lock"></i>
+      <h3>Explore ${selectedCounty}</h3>
+      <p>Unlock this county with a one-time payment. You keep access forever.</p>
+      <button class="btn-explore" id="payExploreBtn"><i class="fas fa-coins"></i> Pay KES ${siteConfig.exploreFee} once</button>
+    </div>`;
+    document.getElementById("payExploreBtn").addEventListener("click",()=>showPaymentModal("explore"));
+    return;
+  }
+  profilesGrid.innerHTML="<p style='grid-column:1/-1;text-align:center;color:#667781;font-weight:600;'>Loading profiles...</p>";
+  const q=query(collection(db,"users"),where("county","==",selectedCounty),where("suspended","==",false));
+  const snap=await getDocs(q);
+  const users=snap.docs.map(d=>({id:d.id,...d.data()})).filter(u=>u.id!==userProfile.id);
+  if(users.length===0){ profilesGrid.innerHTML="<p style='grid-column:1/-1;text-align:center;color:#667781;font-weight:600;'>No profiles in this county yet.</p>"; return; }
+  const unlocked=hasDMAccess();
+  profilesGrid.innerHTML=users.map(u=>`
+    <div class="card">
+      <img class="avatar" src="${u.profilePic}" alt="${escapeHtml(u.nickname)}" />
+      <h3>${escapeHtml(u.nickname)}</h3>
+      <div class="meta">${u.age} · ${escapeHtml(u.gender)} · ${escapeHtml(u.county)}</div>
+      <button class="dm-btn ${unlocked?'paid':''}" data-uid="${u.id}" data-nick="${escapeHtml(u.nickname)}">
+        <i class="fas ${unlocked?'fa-comment-dots':'fa-lock'}"></i> ${unlocked?'Message':'DM (paid)'}
+      </button>
+    </div>
+  `).join("");
+  profilesGrid.querySelectorAll(".dm-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const uid=btn.dataset.uid,nick=btn.dataset.nick;
+      if(!hasDMAccess()){ paymentTargetUser={uid,nick}; showPaymentModal("dm"); }
+      else openChat(uid,nick);
+    });
+  });
+}
+
+/* ---------- PAYMENT ---------- */
+function showPaymentModal(type){
+  if(!siteConfig.paymentsEnabled){ toast("success","Free access","Payments are disabled. You have full access."); return; }
+  if(!siteConfig.paystackPublicKey){ toast("error","Payment unavailable","Paystack is not configured. Please contact support."); return; }
+  if(type==="dm"&&userProfile.paidDM){ toast("success","Already unlocked","Your DM access is already active."); return; }
+  if(type==="explore"&&userProfile.paidExplore){ toast("success","Already unlocked","Your explore access is already active."); return; }
+  paymentActionType=type;
+  if(type==="dm"){ paymentMessage.textContent="One-time payment to unlock DMs to any user. You keep access permanently."; paymentAmount.textContent=`KES ${siteConfig.dmFee}`; }
+  else { paymentMessage.textContent="One-time payment to unlock every county. You keep access permanently."; paymentAmount.textContent=`KES ${siteConfig.exploreFee}`; }
+  paymentModal.classList.add("active");
+}
+closePaymentBtn.addEventListener("click",()=>{ paymentModal.classList.remove("active"); paymentTargetUser=null; });
+
+paystackBtn.addEventListener("click",()=>{
+  if(!userProfile) return;
+  if(!siteConfig.paystackPublicKey){ toast("error","Payment unavailable","Paystack is not configured."); return; }
+  if(!siteConfig.paymentsEnabled){ toast("success","Free access","Payments are currently disabled."); return; }
+  const amountKobo=(paymentActionType==="dm"?siteConfig.dmFee:siteConfig.exploreFee)*100;
+  const reference="PSK_"+Date.now()+"_"+userProfile.id.slice(0,6);
+  paystackBtn.disabled=true; paystackBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Opening secure checkout...';
+  try{
+    const handler=PaystackPop.setup({
+      key:siteConfig.paystackPublicKey,
+      email:userProfile.email,
+      amount:amountKobo,
+      currency:"KES",
+      ref:reference,
+      metadata:{userId:userProfile.id,type:paymentActionType,nickname:userProfile.nickname},
+      callback:function(response){ handlePaymentSuccess(response.reference); },
+      onClose:function(){ paystackBtn.disabled=false; paystackBtn.innerHTML='<i class="fas fa-credit-card"></i> Pay securely with Paystack'; toast("info","Checkout closed","You closed the payment window before completing the transaction."); }
+    });
+    handler.openIframe();
+  }catch(err){ paystackBtn.disabled=false; paystackBtn.innerHTML='<i class="fas fa-credit-card"></i> Pay securely with Paystack'; toast("error","Payment error",err.message||"Unable to open Paystack."); }
+});
+
+async function handlePaymentSuccess(reference){
+  try{
+    const updates={};
+    if(paymentActionType==="dm") updates.paidDM=true;
+    if(paymentActionType==="explore") updates.paidExplore=true;
+    await updateDoc(doc(db,"users",userProfile.id),updates);
+    Object.assign(userProfile,updates);
+    await addDoc(collection(db,"payments"),{
+      userId:userProfile.id,userEmail:userProfile.email,nickname:userProfile.nickname,
+      type:paymentActionType,
+      amount:paymentActionType==="dm"?siteConfig.dmFee:siteConfig.exploreFee,
+      reference,status:"success",source:"paystack_inline",verified:false,createdAt:serverTimestamp()
+    });
+    await pushNotification(userProfile.id,"payment","Payment received",`Reference ${reference}. Your access has been unlocked permanently.`);
+    await notifyAdmins("payment","New payment received",`${userProfile.nickname} paid KES ${paymentActionType==="dm"?siteConfig.dmFee:siteConfig.exploreFee} for ${paymentActionType}.`,{reference,relatedUserId:userProfile.id});
+    paymentModal.classList.remove("active");
+    paystackBtn.disabled=false; paystackBtn.innerHTML='<i class="fas fa-credit-card"></i> Pay securely with Paystack';
+    toast("success","Payment successful",`Reference ${reference}. Access unlocked permanently.`);
+    playChime("notification");
+    renderStatusStrip(); renderProfiles();
+    if(paymentActionType==="dm"&&paymentTargetUser){ openChat(paymentTargetUser.uid,paymentTargetUser.nick); paymentTargetUser=null; }
+  }catch(err){ toast("error","Update failed","Payment was received but we could not update your account. Contact support with reference "+reference); }
+}
+
+/* ---------- NOTIFICATION HELPERS ---------- */
+async function pushNotification(userId,category,title,body,extra={}){
+  try{ await addDoc(collection(db,"notifications"),{userId,category,title,body,read:false,createdAt:serverTimestamp(),...extra}); }
+  catch(e){ console.warn("Notification write failed",e.message); }
+}
+async function notifyAdmins(category,title,body,extra={}){
+  try{
+    const adminsSnap=await getDocs(query(collection(db,"users"),where("role","==","admin")));
+    if(adminsSnap.empty) return;
+    const batch=writeBatch(db);
+    adminsSnap.forEach(a=>{
+      const ref=doc(collection(db,"notifications"));
+      batch.set(ref,{userId:a.id,category,title,body,read:false,createdAt:serverTimestamp(),...extra});
+    });
+    await batch.commit();
+  }catch(e){ console.warn("Admin notify failed",e.message); }
+}
+
+/* ---------- CHAT ---------- */
+function makeChatId(a,b){ return [a,b].sort().join("_"); }
+
+async function openChat(otherUid,otherNick){
+  if(!hasDMAccess()){ toast("warning","DM locked","Complete the one-time DM payment to send messages."); return; }
+  activeChatId=makeChatId(userProfile.id,otherUid);
+  activeChatOtherUid=otherUid;
+  chatHeader.textContent=otherNick;
+  chatStatus.textContent="online";
+  try{
+    const s=await getDoc(doc(db,"users",otherUid));
+    if(s.exists()){ const d=s.data(); chatAvatar.src=d.profilePic||""; chatAvatar.style.display="inline-block"; }
+  }catch(e){}
+  chatModal.classList.add("active");
+  chatMessages.innerHTML="";
+  if(activeChatUnsub) activeChatUnsub();
+  const q=query(collection(db,"chats",activeChatId,"messages"),orderBy("createdAt","asc"));
+  activeChatUnsub=onSnapshot(q,snap=>{
+    chatMessages.innerHTML=snap.docs.map(d=>{
+      const m=d.data();
+      const mine=m.senderId===userProfile.id;
+      const time=m.createdAt?.toDate?m.createdAt.toDate().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
+      const content=m.imageData?`<img src="${m.imageData}" alt="image" />`:escapeHtml(m.text);
+      return `<div class="chat-bubble ${mine?'mine':'theirs'}">${content}<span class="time">${time}</span></div>`;
+    }).join("");
+    chatMessages.scrollTop=chatMessages.scrollHeight;
+  });
+}
+
+async function sendChatMessage(text=null,imageFile=null){
+  if(!activeChatId) return;
+  if(!hasDMAccess()){ toast("warning","DM locked","You cannot send messages until you complete the DM payment."); return; }
+  let imageData=null;
+  if(imageFile){
+    if(!imageFile.type.startsWith("image/")){ toast("warning","Unsupported file","Only images may be sent."); return; }
+    if(imageFile.size>400*1024){ toast("warning","Image too large","Please use an image below 400KB."); return; }
+    imageData=await compressImage(imageFile,640,480,0.65);
+  }
+  await addDoc(collection(db,"chats",activeChatId,"messages"),{
+    senderId:userProfile.id,senderNickname:userProfile.nickname,
+    text:text||"",imageData,type:imageData?"image":"text",createdAt:serverTimestamp()
+  });
+  const otherUid=activeChatOtherUid;
+  if(otherUid&&otherUid!==userProfile.id){
+    await pushNotification(otherUid,"message",
+      `New message from ${userProfile.nickname}`,
+      imageData?"Sent you a photo.":(text||"").slice(0,80),
+      {chatId:activeChatId,fromUserId:userProfile.id,fromNickname:userProfile.nickname});
+  }
+}
+
+chatSendBtn.addEventListener("click",async()=>{
+  const text=chatTextInput.value.trim();
+  if(!text) return;
+  chatTextInput.value="";
+  await sendChatMessage(text);
+});
+chatTextInput.addEventListener("keydown",e=>{ if(e.key==="Enter") chatSendBtn.click(); });
+chatImageBtn.addEventListener("click",()=>chatImageInput.click());
+chatImageInput.addEventListener("change",async()=>{
+  const file=chatImageInput.files[0]; if(!file) return;
+  await sendChatMessage(null,file);
+  chatImageInput.value="";
+});
+closeChatBtn.addEventListener("click",()=>{
+  chatModal.classList.remove("active");
+  if(activeChatUnsub){ activeChatUnsub(); activeChatUnsub=null; }
+  activeChatId=null; activeChatOtherUid=null;
+});
+</script>
+</body>
+</html>
